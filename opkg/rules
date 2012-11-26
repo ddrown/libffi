@@ -1,0 +1,41 @@
+#!/bin/sh
+set -e 
+
+PACKAGE=libffi
+
+case "$1" in
+  build)
+    if [ \! -f configure ]; then
+      ./autogen.sh
+    fi
+    ./configure --host=arm-linux --prefix=/data/local \
+      CC=agcc LDFLAGS="-Wl,-dynamic-linker,/data/local/bin/linker"
+    make
+    ;;
+
+  install)
+    DESTDIR=~/tmp/$PACKAGE
+    rm -rf $DESTDIR
+    mkdir -p $DESTDIR
+    make install DESTDIR=$DESTDIR
+
+    # -devel package
+    DEVEL_DESTDIR=~/tmp/$PACKAGE-devel
+    rm -rf $DEVEL_DESTDIR
+    mkdir -p $DEVEL_DESTDIR/data/local/lib
+    mv $DESTDIR/data/local/lib/*.{a,so,la} $DEVEL_DESTDIR/data/local/lib
+    mv $DESTDIR/data/local/lib/libffi-*/ $DESTDIR/data/local/lib/pkgconfig/ $DEVEL_DESTDIR/data/local/lib
+    mv $DESTDIR/data/local/share $DEVEL_DESTDIR/data/local/
+    mkdir -p $DEVEL_DESTDIR/CONTROL
+    cp opkg/control-devel $DEVEL_DESTDIR/CONTROL/control
+    opkg-build -o 0 -g 0 $DEVEL_DESTDIR `cd .. ; pwd`
+    ;;
+    
+  clean)
+    make clean
+    ;;
+
+  *)
+    echo unknown argument $1
+    ;;
+esac
